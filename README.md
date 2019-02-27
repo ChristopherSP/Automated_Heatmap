@@ -16,14 +16,14 @@ The following packages are also needed:
  - library(shapefiles)
  - library(maptools)
  - library(sp)
- - library(ggplot2)
  - library(plotrix)
- - library(rgdal)
  - library(MASS)
- - library(tseries)
  - library(lubridate)
  - library(zoo)
  - library(rgeos)
+ - library(stringi)
+ - library(parallel)
+ - library(gdata)
 
 To install a package on R you just type the command
     
@@ -31,32 +31,40 @@ To install a package on R you just type the command
     
 # Running the script
 
-The code is composed by two parts, prep\_data.R and automated\_heatmap.R.
+The solution is composed by three parts, getting the data from cassandra, instantiating values to each campaign and processing the data to create a model and generate the heatmap.
 
-To run the script just use the following comand on terminal
+In order to collect the data from cassandra it is needed to execute de scala programam encapsulated in the JAR file get-heat-map-data_2.11-1.0.jar. In order to do this one must run the following code on terminal:
 
-    Rscript --vanilla option1 option2 option3 option4
+    spark-submit --master local[*] get-heat-map-data_2.11-1.0.jar option1 option2 option3 option4
 
 all parameters are mandatory
 
-option1 sets whether to make a new model or to use an old one. The values to this parameter are:
+ - __option1__: A string to choose a client
+ - __option2__: An integer to choose the campaign
+ - __option3__: A string to choose the inital datetime to begin to extract the data
+ - __option4__: A string to choose the final datetime to end the data extraction
 
- - TRUE 
- - FALSE
+So an example would be like the call beneath, which will collect the data from pernambucanas, campaign 2 and only the 14th day of november since the day starts at 00:00:00 and ends at 23:59:59
 
-TRUE makes a new model and FALSE use an old one.
+spark-submit --master local[*] get-heat-map-data_2.11-1.0.jar "pernambucanas" 2 "2017-11-14 00:00:00" "2017-11-15 00:00:00"
 
-option2 sets the client for which to make the heat map
+The data will be save as a text file in a structure such as _/home/centos/heatmap_auto/client_campaign/dados/initial-date_final-date/part-00000_ to be used on a R script 
 
-option3 sets the stablishment of the client defined above
+To run the R script just use the following comand on terminal
 
-option4 sets the period (in days) to train the newmodel starting from the actual sys.date
+    Rscript --vanilla heatmap_prod.R option1 option2 option3 option4
 
-The automated\_heatmap\_bothv02\_covmodels.R will source the prep\_data\_spark.R, which reads the dataset file in a specific folder collected by the get\_data.scala scrip and makes the dataframe. Than the script will make the model, unsig a frequentist approach, that will than be used to make the plot.
+all parameters are mandatory and exactly the same as mentioned above, to get the data using scala.
+
+This command will execute the heatmap_prod.R, which in turn will source the clients_info.R code that defines global variables of clients, and will keep on preparing the data and making the heatmaps for populational density and time spent, based on the models stored in the file _/home/centos/heatmap_auto/client_campaign/modelos/modelo.RData_, and saving the images as _/home/centos/heatmap_auto/client_campaign/mapas/date.png_ file.
+
+The images will than be rotated and uploaded to a S3 bucket. All of this process are currently being done by the bash script script_daily.
+
+The models is being made manually using the automated\_heatmap\_bothv02\_covmodels.R, which reads the dataset file in a specific folder collected by the scala case already mentioned. Than the script will make the model, unsig a frequentist approach, that will than be used to make the plot.
 
 If no spatial dependency is observed than the code will use a old model instead of crashing. The code does this by looking at some predefined semivariograns. Based on the semi-variogram, a grid (100 x 100) of initial parameters are set and teste.
 
-After that the script use the best tested model into the function krige.conv, responsable to interpolate the values in the specified grid of points (80 x 80).
+After that the script uses the best tested model, from a group of 42 different models, into the function krige.conv, responsable to interpolate the values in the specified grid of points (80 x 80).
 
 After all is set and done the script saves the heat map into a png file.
 

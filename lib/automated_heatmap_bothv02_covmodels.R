@@ -56,9 +56,9 @@ source('/home/christopher/Documentos/Sense/Sense-Data-Science/heatmap_general/li
 # class(geodata_time) = 'geodata'
 
 # Create geodata object
-geodata_density = list(coords = general.mean[,.(x,y)], data = general.mean$signal, borders = eval(parse(text = paste0('coords$',client))))
+geodata_density = list(coords = general.mean[,.(x,y)], data = general.mean$signal, borders = eval(parse(text = paste0('coords$',client,"$campaign",campaign))))
 class(geodata_density) = 'geodata'
-geodata_time = list(coords = general.mean[,.(x,y)], data = general.mean$time, borders = eval(parse(text = paste0('coords$',client))))
+geodata_time = list(coords = general.mean[,.(x,y)], data = general.mean$time, borders = eval(parse(text = paste0('coords$',client,"$campaign",campaign))))
 class(geodata_time) = 'geodata'
 
 # Indentify outliers
@@ -196,7 +196,7 @@ modeling = function(dependency,variogram,geodata,type){
     mod$m42 = tryCatch(likfit(geodata, ini=initial, fix.nug=F, fix.kappa=F, trend='2nd', cov.model='pure.nugget'), error = function(cond){return(NULL)})
 
     # models = do.call(function(x,y,z)paste0("mod$m",x ," = tryCatch(likfit(geodata, ini=initial, fix.nug=F, fix.kappa=F, trend='",y,"', cov.model='",z,"'), error = function(cond){return(NULL)})"),list(parameters$rn,parameters$Var1,parameters$Var2))
-    # 
+    #
     # mod = lapply(as.list(models),function(x) eval(parse(text=x)))
     # print('mod')
     # print(mod)
@@ -204,16 +204,18 @@ modeling = function(dependency,variogram,geodata,type){
     # Choose best model using BIC
     mod.bic = sapply(mod,function(x)x$BIC)
     print(mod.bic)
+    print('##############################################################')
     print('best_model_names')
     best_model_name = names(sort(abs(mod.bic))[1])
     print(best_model_name)
+    print('##############################################################')
     print('best_model')
     best_model = eval(parse(text = paste0('mod$',best_model_name)))
     # print('save')
     # save(best_model,file = paste0('../models_',type,'/model_',today(),'.RData'))
     print('kc')
-    kc = NULL
-    # kc = lapply(mod,function(x)tryCatch(krige.conv(geodata, loc=gr0,krige=krige.control(obj.model=x),output=output.control(n.predictive=500)), error = function(cond){return(NULL)}))
+    # kc = NULL
+    kc = lapply(mod,function(x)tryCatch(krige.conv(geodata, loc=gr0,krige=krige.control(obj.model=x),output=output.control(n.predictive=500)), error = function(cond){return(NULL)}))
     return(list(kc = kc, model = mod))
   }else{
     mod_files = list.files(paste0('../models_',type))
@@ -238,7 +240,7 @@ if(must_train == T){
   dependency_density = mapply(function(x,y){
     any(x$v < y$v.lower | x$v > y$v.upper)
   },variogram_density,variogram.env_density)
-  
+
   dependency_time = mapply(function(x,y){
     any(x$v < y$v.lower | x$v > y$v.upper)
   },variogram_time,variogram.env_time)
@@ -273,25 +275,38 @@ if(must_train == T){
 
 png(paste0('../output/KrigDensity',today,'.png'),units = 'px', width = 1000, height = 1000,res=96)
 par(mar = rep(0, 4))
-#1,4,25,28
-image(model_density$kc$m25,col=my.color2(100),xlab = '',ylab='',main='',axes=T,ylim=c(0,46))
+#
+#best 19
+image(model_density$kc$m19,col=my.color2(100),xlab = '',ylab='',main='',axes=T)
 color.legend(xl = col_legend$pernambucanas$xl, xr = col_legend$pernambucanas$xr, yb = col_legend$pernambucanas$yb, yt = col_legend$pernambucanas$yt, gradient =  'x', rect.col = my.color2(100), legend = round(seq(min(kc_density$predict),max(kc_density$predict),length.out = 5),2),cex = 1, srt=-90,pos = 3,offset=1.5)
 
-plot(eval(parse(text = paste0('area_sp$',name_campaign))), add = T)
-with(eval(parse(text = paste0('labels$',name_campaign))),text(x, y, de_para, cex = 1,srt=-90,family = 'Roboto'))
-with(eval(parse(text = paste0('labels$',name_campaign))),text(leg.x, leg.y, text, cex = 1,srt=-90,family = 'Roboto',adj=0))
+plot(eval(parse(text = paste0('area_sp$',name_campaign,"_campaign",campaign))), add = T)
+with(eval(parse(text = paste0('labels$',name_campaign,"_campaign",campaign))),text(x, y, de_para, cex = 1,srt=-90,family = 'Roboto'))
+with(eval(parse(text = paste0('labels$',name_campaign,"_campaign",campaign))),text(leg.x, leg.y, text, cex = 1,srt=-90,family = 'Roboto',adj=0))
 dev.off()
 
 png(paste0('../output/KrigTime',today,'.png'),units = 'px', width = 1000, height = 1000,res=96)
 par(mar = rep(0, 4))
-# 1,4, 8,9,10,11,12,13,14,15,16,17,18,26,30, 34,35,36
-# 1,4,9,12,15,18,30,36
-# 8,11,14,17,26,35 
-# 10,13,16,34
-image(model_time$kc$m13,col=my.color2(100),xlab = '',ylab='',main='',axes=T,ylim=c(0,46))
+# 3,5, 6,12,19
+image(model_time$kc$m20,col=my.color2(100),xlab = '',ylab='',main='',axes=T)
 color.legend(xl = col_legend$pernambucanas$xl, xr = col_legend$pernambucanas$xr, yb = col_legend$pernambucanas$yb, yt = col_legend$pernambucanas$yt, gradient =  'x', rect.col = my.color2(100), legend = round(seq(min(kc_time$predict),max(kc_time$predict),length.out = 5),2),cex = 1, srt=-90,pos = 3,offset=1.5)
 
 plot(eval(parse(text = paste0('area_sp$',name_campaign))), add = T)
 with(eval(parse(text = paste0('labels$',name_campaign))),text(x, y, de_para, cex = 1,srt=-90,family = 'Roboto'))
 with(eval(parse(text = paste0('labels$',name_campaign))),text(leg.x, leg.y, text, cex = 1,srt=-90,family = 'Roboto',adj=0))
 dev.off()
+
+png("~/Downloads/teste.png",units = 'px', width = 1000, height = 1000,res=96)
+par(mar = rep(0, 4))
+image(kc_density$m19,col=my.color2(100),xlab = '',ylab='',main='',axes=T,ylim=range(gr$Var2)+c(-2.5,2.5))
+plot(eval(parse(text = paste0('area_sp$',client,"_campaign",campaign))), add = T)
+with(eval(parse(text = paste0('labels$',client,"_campaign",campaign))),text(x, y, de_para, cex = 1,srt=-90,family = 'Roboto'))
+with(eval(parse(text = paste0('labels$',client,"_campaign",campaign))),text(leg.x, leg.y, text, cex = 1,srt=-90,family = 'Roboto',adj=0))
+dev.off()
+
+png(paste0('./',client,'/mapas/',gsub('-','_',dia),'.png'),units = 'px', width = 1000, height = 1000,res=96)
+par(mar = rep(0, 4))
+image(kc_time$m19,col=my.color2(100),xlab = '',ylab='',main='',axes=T,ylim=range(gr$Var2)+c(-2.5,2.5))
+plot(eval(parse(text = paste0('area_sp$',client))), add = T)
+with(eval(parse(text = paste0('labels$',client))),text(x, y, de_para, cex = 1,srt=-90,family = 'Roboto'))
+with(eval(parse(text = paste0('labels$',client))),text(leg.x, leg.y, text, cex = 1,srt=-90,family = 'Roboto',adj=0))

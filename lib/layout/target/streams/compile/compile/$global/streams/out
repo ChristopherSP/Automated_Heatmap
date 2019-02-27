@@ -1,0 +1,4 @@
+[0m[[0m[31merror[0m] [0m[0m/home/christopher/Documents/Sense/Sense-Data-Science/heatmap_general/lib/layout/src/main/scala/get_heat_map_data.scala:105:76: value === is not a member of String[0m
+[0m[[0m[31merror[0m] [0m[0m    val mySensors = sc.cassandraTable(client,"sensor").where("id_campaign" === campaign)[0m
+[0m[[0m[31merror[0m] [0m[0m                                                                           ^[0m
+[0m[[0m[31merror[0m] [0m[0mone error found[0m

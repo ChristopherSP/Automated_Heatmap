@@ -51,10 +51,11 @@ val sqlContext = SparkSession.builder().getOrCreate()
         import sqlContext.implicits._
 
         val clientg : String = args(0)
-        val datetime_inig : String = args(1)
-        val datetime_finalg : String = args(2)
+        val campaign : Int = args(1).toInt
+        val datetime_inig : String = args(2)
+        val datetime_finalg : String = args(3)
         
-        val all_data = consult(clientg, datetime_inig, datetime_finalg)
+        val all_data = consult(clientg, campaign, datetime_inig, datetime_finalg)
 
         val all_data_all = all_data.withColumn("date_diaria",getConcatenated(year($"date_time"),month($"date_time"),dayofmonth($"date_time")))
 
@@ -78,14 +79,15 @@ val sqlContext = SparkSession.builder().getOrCreate()
         val visitClass2 = visitClass.groupBy("mac_address","visitId").agg(max($"permanency")).withColumnRenamed("max(permanency)","permanency")
         val filter_workers = specialFilter(visitClass2)
         val resultSet2 = visitClass.join(filter_workers, Seq("mac_address")).select("id_sensor","rssi", "date_time", "id_campaign", "mac_address", "vendor","date_diaria","visitId")
-        resultSet2.rdd.map(x=>x.mkString(",")).coalesce(1,true).saveAsTextFile("/home/centos/heatmap_auto/" + clientg + "/dados/" + datetime_inig.split(" ")(0) + "_" + datetime_finalg.split(" ")(0))
+        resultSet2.rdd.map(x=>x.mkString(",")).coalesce(1,true).saveAsTextFile("file:///home/centos/heatmap_auto/" +
+          clientg + "/" + campaign + "/dados/" + datetime_inig.split(" ")(0) + "_" + datetime_finalg.split(" ")(0))
     }
 
 
 
 ////////////////// Get data from cassandra ////////////////////
 
-def consult(client: String, datetime_ini: String, datetime_final: String): DataFrame = {
+def consult(client: String, campaign: Int, datetime_ini: String, datetime_final: String): DataFrame = {
     val schemaSensor = 
     StructType(
             StructField("id_sensor",StringType)::Nil
@@ -101,7 +103,7 @@ def consult(client: String, datetime_ini: String, datetime_final: String): DataF
           StructField("vendor", StringType) :: Nil
       )
       
-    val mySensors = sc.cassandraTable(client,"sensor")
+    val mySensors = sc.cassandraTable(client,"sensor").where("id_campaign = " + campaign)
     
     val sensors_data = sqlContext.createDataFrame(mySensors.map(
       r => org.apache.spark.sql.Row(r.columnValues(0).toString)), schemaSensor)

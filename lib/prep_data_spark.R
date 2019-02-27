@@ -29,7 +29,7 @@ my.color = colorRampPalette(c("green", 'yellow',"red"))
 my.color2 = colorRampPalette(c('cyan','green', 'yellow','orange',"red"))
 
 # data = fread('/home/christopher/Downloads/claro1508_2908.txt',sep=',',na.strings = '')
-data = fread('/home/christopher/Documents/Sense/HeatMaps/claro/dados/claro2309_2309.txt',sep=',',na.strings = '')
+data = fread('/home/christopher/Downloads/part-00000',sep=',',na.strings = '')
 names(data) = c("id_sensor","rssi", "date_time", "id_campaign", "mac_address", "vendor","date_diaria","visit")
 
 # Spark timestamp has a fixed .0 milisecond that is being removed
@@ -59,10 +59,11 @@ data.per.sensor.time = data[rssi>=median(data$rssi),.(count = length(unique(mac_
 data.per.sensor = merge(data.per.sensor, data.per.sensor.time, all.x=T, by = c('id_sensor','date_diaria'))
 
 client = 'claro'
+campaign = 35
 # Final dataset
-general.mean = merge(general.mean,eval(parse(text = paste0('macs$',client,'[,.(id_sensor,x,y)]'))),all.x = T,by='id_sensor')
+general.mean = merge(general.mean,eval(parse(text = paste0('macs$',client,"$campaign",campaign,'[,.(id_sensor,x,y)]'))),all.x = T,by='id_sensor')
 general.mean = general.mean[!is.na(x)]
 general.mean[,`:=`(x=as.numeric(x),y=as.numeric(y))]
-data.per.sensor = merge(data.per.sensor,eval(parse(text = paste0('macs$',client,'[,.(id_sensor,x,y)]'))),all.x = T,by='id_sensor')
+data.per.sensor = merge(data.per.sensor,eval(parse(text = paste0('macs$',client,"$campaign",campaign,'[,.(id_sensor,x,y)]'))),all.x = T,by='id_sensor')
 data.per.sensor = data.per.sensor[!is.na(x)]
 data.per.sensor[,`:=`(x=as.numeric(x),y=as.numeric(y))]
